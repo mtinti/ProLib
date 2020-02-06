@@ -569,4 +569,62 @@ class IRS():
         self.data_irs = data
         #print(data.head()) 
 
-          
+class CV():
+    '''
+    cols = ['Reporter intensity corrected {}'.format(n) for n in range(0,10)]
+    experiments = ['E5014','E5015','E5016']
+    data=df[[b + ' '+ a for a in experiments for b in cols ]]
+    data.columns  = [str(b) + '_'+ a for a in experiments for b in range(1,11)]
+
+    groups = {}
+    colors = {}
+    for n in range(1,11):
+        temp = []
+        for exp in experiments:
+            temp.append('{n}_{exp}'.format(n=n,exp=exp))
+        groups[n]=temp
+        colors[n]='b'
+    {1: ['1_E5014', '1_E5015', '1_E5016'],
+     2: ['2_E5014', '2_E5015', '2_E5016'],
+     3: ['3_E5014', '3_E5015', '3_E5016'],
+     4: ['4_E5014', '4_E5015', '4_E5016'],
+     5: ['5_E5014', '5_E5015', '5_E5016'],
+     6: ['6_E5014', '6_E5015', '6_E5016'],
+     7: ['7_E5014', '7_E5015', '7_E5016'],
+     8: ['8_E5014', '8_E5015', '8_E5016'],
+     9: ['9_E5014', '9_E5015', '9_E5016'],
+     10: ['10_E5014', '10_E5015', '10_E5016']}
+    '''
+    def __init__(
+        self,
+        data,
+        groups = {},
+        
+    ):
+            self.data = data
+            self.groups = groups
+            
+    
+    def compute(self):
+        data = self.data.copy()
+        cv_means = []
+        cv_stds = []
+        cvs = []
+        for group in groups:
+            #print(group,groups[group])
+            #if group == 1:
+               #print(data[groups[group]].head())
+            temp = data[groups[group]].replace(0,np.nan).mean(axis=1, skipna=True)
+            cv_means.append(temp)
+            #print(temp)
+            temp = data[groups[group]].replace(0,np.nan).std(axis=1, skipna=True)
+            cv_stds.append(temp)
+
+        for std,mean, group in zip(cv_stds, cv_means, groups):
+            temp = std/mean
+            temp.name=group
+            cvs.append(temp)
+        
+        cvs = pd.concat(cvs, axis=1)
+        self.cv = cvs
+        #print(cvs.head())          
