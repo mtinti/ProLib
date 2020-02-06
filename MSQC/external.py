@@ -630,8 +630,7 @@ __msms_columns = [
     'Raw file',
     'Identified',
     'Total ion current',
-    'Sequence',
-    'Total ion current'
+    'Sequence'
 ]
 
 __chunksize = 300000
@@ -652,7 +651,7 @@ def find_chunks(infile='msScans.txt', chunksize=__chunksize):
     tot_lines = rawincount(infile)#sum(1 for i in open(infile, 'rb'))
     print(tot_lines, 'lines in', infile )
     chunksize = math.ceil(tot_lines/float(chunksize))
-    print(chunksize, 'expected chunks of ', chunksize, 'rows')
+    print(chunksize, 'expected chunks of ', tot_lines/chunksize, 'rows')
     return chunksize
 
 def load_chunks(infile='msScans.txt', chunksize=__chunksize,
@@ -802,7 +801,11 @@ def add_spray_instability_ms(msScans, df_summary):
     return df_summary
 
 def qc_pipline(TXT_PATH):
+
+    df_summary= pd.read_csv(os.path.join(TXT_PATH,'summary.txt'), sep='\t')
+    print('summary shape:', df_summary.shape)
     # ms-ms Data
+    print('parse msmsScans')
     infile = os.path.join(TXT_PATH,'msmsScans.txt')
     chunks = find_chunks(infile)
     msmsScans = load_chunks(
@@ -817,41 +820,41 @@ def qc_pipline(TXT_PATH):
 
 
     # msms Identified
+    print('parse msmsIdentified')
     msmsIdentified = msmsScans[msmsScans['Identified']=='+'].copy()
     msmsIdentified.loc[:, 'RT_bin_rank'] = msmsIdentified.groupby('Raw file')['Retention time'].rank()
     msmsIdentified.loc[:,'RT_bin_rank_cut'] = msmsIdentified.groupby('Raw file')['RT_bin_rank'].transform(
         lambda x: pd.cut(x, 4, labels=[1,2,3,4], duplicates='drop'))
     msmsIdentified.head()
     # ms Data
-    infile = os.path.join(TXT_PATH,'msScans.txt')
-    chunks = find_chunks(infile)
-    msScans = load_chunks(
-        infile=infile,
-        usecols = __ms_columns,
-        dtype = __dtype,
-        tot_chunks=chunks)
-    msScans['RT_round']=msScans['Retention time'].astype(int)
-    msScans['RT_bin_qcut'] = msScans.groupby('Raw file')['Retention time'].transform(
-        lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
-
-    #load the summary file output of maxquant
-    df_summary= pd.read_csv(os.path.join(TXT_PATH,'summary.txt'), sep='\t')
-    print(df_summary.shape)
-
     
     df_summary = add_max_retention_time(msmsScans, df_summary)
-
-    df_summary = add_median_injection_time_ms(msScans, df_summary)
-
     df_summary = add_median_injection_time_msms(msmsScans, df_summary)
-
     df_summary = add_retention_spread(msmsIdentified, df_summary)
-
     df_summary = add_pep_min(msmsIdentified, df_summary)
-
     df_summary = add_spray_instability_msms(msmsScans, df_summary)
-
-    df_summary = add_spray_instability_ms(msScans, df_summary)
+    
+    infile = os.path.join(TXT_PATH,'msScans.txt')
+    if os.path.exists(infile):
+        print('parse msScans')
+        chunks = find_chunks(infile)
+        msScans = load_chunks(
+            infile=infile,
+            usecols = __ms_columns,
+            dtype = __dtype,
+            tot_chunks=chunks)
+        msScans['RT_round']=msScans['Retention time'].astype(int)
+        msScans['RT_bin_qcut'] = msScans.groupby('Raw file')['Retention time'].transform(
+            lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
+        df_summary = add_median_injection_time_ms(msScans, df_summary)
+        df_summary = add_spray_instability_ms(msScans, df_summary)
+        
+        
+    else:
+        print('msScans does not exist')
+        msScans = pd.DataFrame()
+        #load the summary file output of maxquant
+    
     return df_summary, msScans, msmsIdentified, msmsScans
 
 #funtion tom make the same plot
