@@ -1,0 +1,22 @@
+
+r=3.5.1
+conda create --name myEnv python=3.7.1 rpy2=2.9.1 r=3.5.1 numpy scikit-learn matplotlib simplegeneric tqdm pandas scipy seaborn missingno adjusttext biopython jupyter jupyter_contrib_nbextensions
+conda activate myEnv
+conda install numpy=1.16.3
+
+
+install.packages("BiocManager", repos='https://cran.ma.imperial.ac.uk/')
+BiocManager::install("sva") # install limma
+BiocManager::install("DESeq2")
+BiocManager::install("edgeR")
+
+install.packages("tidyverse")
+install.packages("gridExtra")
+install.packages("scales")
+install.packages("locfit")
+
+
+install.packages("sva")
+
+
+ 
