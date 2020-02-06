@@ -505,7 +505,7 @@ def concordance_correlation_coefficient(y_true, y_pred,
     
     
 class IRS():
-     """
+    """
      Internal Reference Scaling for multibach TMT
      
     cols = ['Reporter intensity corrected {}'.format(n) for n in range(0,10)]
@@ -517,7 +517,7 @@ class IRS():
                 chaneels = range(1,11)) 
      dataIRS.norm_loading()
      dataIRS.norm_irs()
-     """
+    """
     def __init__(
         self,
         data=pd.DataFrame(),
