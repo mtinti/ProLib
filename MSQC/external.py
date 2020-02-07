@@ -661,6 +661,12 @@ __msmsms_columns = [
     'Total ion current',
 ]
 
+
+__msms_file_columns = [
+    'Raw file',
+    'Retention time',
+    'Mass Deviations [ppm]'    
+]
 __chunksize = 300000
 
 
@@ -841,7 +847,7 @@ def qc_pipline(TXT_PATH):
         usecols = __msms_columns,
         dtype = __dtype,
         tot_chunks=chunks)
-    msmsScans.head()
+    #msmsScans.head()
     msmsScans['RT_round']=msmsScans['Retention time'].astype(int)
     msmsScans.loc[:,'RT_bin_qcut'] = msmsScans.groupby('Raw file')['Retention time'].transform(
         lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
@@ -853,7 +859,7 @@ def qc_pipline(TXT_PATH):
     msmsIdentified.loc[:, 'RT_bin_rank'] = msmsIdentified.groupby('Raw file')['Retention time'].rank()
     msmsIdentified.loc[:,'RT_bin_rank_cut'] = msmsIdentified.groupby('Raw file')['RT_bin_rank'].transform(
         lambda x: pd.cut(x, 4, labels=[1,2,3,4], duplicates='drop'))
-    msmsIdentified.head()
+    #msmsIdentified.head()
     # ms Data
     
     df_summary = add_max_retention_time(msmsScans, df_summary)
@@ -885,12 +891,13 @@ def qc_pipline(TXT_PATH):
     infile = os.path.join(TXT_PATH,'ms3Scans.txt')
     if os.path.exists(infile) and os.path.getsize(infile) > 0:
         print('parse ms3Scans')
+        chunks = find_chunks(infile)
         msmsmsScans = load_chunks(
             infile=infile,
             usecols = __msmsms_columns,
             dtype = __dtype,
             tot_chunks=chunks)
-        msmsmsScans.head()
+        #msmsmsScans.head()
         msmsmsScans['RT_round']=msmsmsScans['Retention time'].astype(int)
         msmsmsScans.loc[:,'RT_bin_qcut'] = msmsmsScans.groupby('Raw file')['Retention time'].transform(
             lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
@@ -900,8 +907,52 @@ def qc_pipline(TXT_PATH):
         msmsmsScans = pd.DataFrame()
         #load the summary file output of maxquant        
 
+    infile = os.path.join(TXT_PATH,'msms.txt')
+    #this columns is spelled in different cases
+    #according to the maxquant version
+    new_header = 'Mass Deviations [ppm]' 
+        
+    if os.path.exists(infile) and os.path.getsize(infile) > 0:
+        new_headers = ['Mass Deviations [ppm]','Mass Deviations [Da]']
+        temp_cols = [n for n in __msms_file_columns ]
+        for line in open(infile):
+            if 'Mass deviations [ppm]' in line:
+                print('ooooooooooooo')
+                temp_cols = [n for n in __msms_file_columns if n != 'Mass Deviations [ppm]']
+                temp_cols = [n for n in temp_cols if n != 'Mass Deviations [Da]']
+                
+                temp_cols+=['Mass deviations [ppm]','Mass deviations [Da]']
+                new_headers = ['Mass deviations [ppm]','Mass deviations [Da]']
+        
+            break
     
-    return df_summary, msScans, msmsIdentified, msmsScans, msmsmsScans
+ 
+        chunks = find_chunks(infile)
+        print('parse msms')
+        print(temp_cols)
+        msms= load_chunks(
+            infile=infile,
+            usecols = temp_cols,
+            dtype = __dtype,
+            tot_chunks=chunks)
+        #msms.head()
+        msms['RT_round']=msms['Retention time'].astype(int)
+        msms.loc[:,'RT_bin_qcut'] = msms.groupby('Raw file')['Retention time'].transform(
+            lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
+            
+        def compute_mean(X):
+            X= np.mean([float(n) for n in X.split(';')])
+            return X
+        for col in new_headers:
+            msms['mean_MSMS_error'+col.split(' ')[-1]]=msms[col].apply(compute_mean)    
+
+    else:
+        print('msms does not exist')
+        msms = pd.DataFrame()
+        #load the summary file output of maxquant        
+
+    
+    return df_summary, msScans, msmsIdentified, msmsScans, msmsmsScans, msms
 
 #funtion tom make the same plot
 def Injection_plot(temp, title, TXT_PATH):
