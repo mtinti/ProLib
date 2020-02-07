@@ -216,7 +216,7 @@ def extract_gradient(in_path):
 
 #function to visualize QC metric for a raw file
 #Functions for QC plots
-def __plot_injection_time(ax, tempMSdf, tempMSMSdf):
+def __plot_injection_time(ax, tempMSdf, tempMSMSdf, tempMSMSMSdf):
     tempMSMSdf.groupby('RT_round').mean().plot(
         kind='line',
         x='Retention time',
@@ -230,6 +230,15 @@ def __plot_injection_time(ax, tempMSdf, tempMSMSdf):
         y='Ion injection time',
         ax=ax,
         label='median MS')
+
+    if len(tempMSMSMSdf) > 0:
+        tempMSMSMSdf.groupby('RT_round').median().plot(
+        kind='line',
+        x='Retention time',
+        y='Ion injection time',
+        ax=ax,
+        label='median MS3')
+
     
     ax.set_ylabel('Millisec')
     ax.set_title('QC: Ion Injection Time')
@@ -286,7 +295,7 @@ def __plot_gradient(ax, tempMSMSdf, gradient):
               loc='upper center', bbox_to_anchor=(0.1, -0.02))
     ax.set_title('QC: Chromatography Efficency')
   
-def __plot_ion_current(ax, tempMSdf, tempMSMSdf):
+def __plot_ion_current(ax, tempMSdf, tempMSMSdf, tempMSMSMSdf):
     
     tempMSMSdf = tempMSMSdf.groupby('RT_round').median()
     tempMSMSdf['Total ion current']=np.log10(tempMSMSdf['Total ion current'])
@@ -305,6 +314,16 @@ def __plot_ion_current(ax, tempMSdf, tempMSMSdf):
         ax=ax,
         label='MS')
     
+    if len(tempMSMSMSdf) > 0:
+        tempMSMSMSdf =tempMSMSMSdf.groupby('RT_round').median()
+        tempMSMSMSdf['Total ion current']=np.log10(tempMSMSMSdf['Total ion current'])
+        tempMSMSMSdf.groupby('RT_round').median().plot(
+        kind='line',
+        x='Retention time',
+        y='Total ion current',
+        ax=ax,
+        label='MS3')
+     
     ax.set_ylabel('LOG10 Ion Current')
     ax.set_title('QC: Instrument Operativity')
 
@@ -320,7 +339,7 @@ def __plot_cycle_time(ax, tempMSdf):
     ax.set_title('QC: Instrument Operativity')
     
 #function to connect all the subplots
-def plot_raw_file(tempMSdf, tempMSMSdf,  title, gradient=()):
+def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=()):
     fig,axes=plt.subplots(figsize=(16,10), ncols=2, 
     nrows=2,  sharex=True)
     #just to be sure
@@ -333,8 +352,8 @@ def plot_raw_file(tempMSdf, tempMSMSdf,  title, gradient=()):
     tempMSMSdf = tempMSMSdf.sort_values('Retention time')
     
     __plot_gradient(axes[0,0],  tempMSMSdf, gradient=gradient)
-    __plot_injection_time(axes[0,1], tempMSdf, tempMSMSdf)
-    __plot_ion_current(axes[1,0], tempMSdf, tempMSMSdf)
+    __plot_injection_time(axes[0,1], tempMSdf, tempMSMSdf, tempMSMSMSdf)
+    __plot_ion_current(axes[1,0], tempMSdf, tempMSMSdf, tempMSMSMSdf)
     __plot_cycle_time(axes[1,1], tempMSdf)
     for a,b in [(0,0),(0,1),(1,0),(1,1)]:
         ax = axes[a, b]
@@ -633,6 +652,14 @@ __msms_columns = [
     'Sequence'
 ]
 
+
+__msmsms_columns = [
+    'Raw file',
+    'Ion injection time',
+    'Retention time',
+    'Total ion current',
+]
+
 __chunksize = 300000
 
 
@@ -848,14 +875,32 @@ def qc_pipline(TXT_PATH):
             lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
         df_summary = add_median_injection_time_ms(msScans, df_summary)
         df_summary = add_spray_instability_ms(msScans, df_summary)
-        
-        
     else:
         print('msScans does not exist')
         msScans = pd.DataFrame()
-        #load the summary file output of maxquant
+        #load the summary file output of maxquant        
+        
+        
+    infile = os.path.join(TXT_PATH,'ms3Scans.txt')
+    if os.path.exists(infile):
+        print('parse ms3Scans')
+        msmsmsScans = load_chunks(
+            infile=infile,
+            usecols = __msmsms_columns,
+            dtype = __dtype,
+            tot_chunks=chunks)
+        msmsmsScans.head()
+        msmsmsScans['RT_round']=msmsmsScans['Retention time'].astype(int)
+        msmsmsScans.loc[:,'RT_bin_qcut'] = msmsmsScans.groupby('Raw file')['Retention time'].transform(
+            lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
+
+    else:
+        print('ms3Scans does not exist')
+        msmsmsScans = pd.DataFrame()
+        #load the summary file output of maxquant        
+
     
-    return df_summary, msScans, msmsIdentified, msmsScans
+    return df_summary, msScans, msmsIdentified, msmsScans, msmsmsScans
 
 #funtion tom make the same plot
 def Injection_plot(temp, title, TXT_PATH):
