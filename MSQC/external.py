@@ -665,7 +665,8 @@ __msmsms_columns = [
 __msms_file_columns = [
     'Raw file',
     'Retention time',
-    'Mass Deviations [ppm]'    
+    'Mass Deviations [ppm]' ,
+    'Mass Deviations [Da]'    
 ]
 __chunksize = 300000
 
@@ -913,7 +914,7 @@ def qc_pipline(TXT_PATH):
     new_header = 'Mass Deviations [ppm]' 
         
     if os.path.exists(infile) and os.path.getsize(infile) > 0:
-        new_headers = ['Mass Deviations [ppm]','Mass Deviations [Da]']
+        new_headers = ['Mass Deviations [ppm]', 'Mass Deviations [Da]']
         temp_cols = [n for n in __msms_file_columns ]
         for line in open(infile):
             if 'Mass deviations [ppm]' in line:
