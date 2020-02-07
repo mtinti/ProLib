@@ -217,6 +217,7 @@ def extract_gradient(in_path):
 #function to visualize QC metric for a raw file
 #Functions for QC plots
 def __plot_injection_time(ax, tempMSdf, tempMSMSdf, tempMSMSMSdf):
+    #print(tempMSMSdf.head())
     tempMSMSdf.groupby('RT_round').mean().plot(
         kind='line',
         x='Retention time',
