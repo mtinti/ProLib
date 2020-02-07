@@ -250,7 +250,7 @@ def __plot_gradient(ax, tempMSMSdf, gradient):
     #print(tempMSMSdf['Retention time'].head())
     bins = int(tempMSMSdf['Retention time'].max()+1)
     #print(tempMSMSdf['Retention time'][tempMSMSdf['Identified']=='-'].head())
-    temp = tempMSMSdf[ tempMSMSdf['Identified']=='+' ].groupby('RT_round')['Retention time'].size()
+    temp = tempMSMSdf[tempMSMSdf['Identified']=='+' ].groupby('RT_round')['Retention time'].size()
     ax.plot(temp.index.values,temp.values,'g-',label='Identified')
     
     temp = tempMSMSdf[ tempMSMSdf['Identified']=='-' ].groupby('RT_round')['Retention time'].size()
@@ -882,7 +882,7 @@ def qc_pipline(TXT_PATH):
         
         
     infile = os.path.join(TXT_PATH,'ms3Scans.txt')
-    if os.path.exists(infile):
+    if os.path.exists(infile) and os.path.getsize(infile) > 0:
         print('parse ms3Scans')
         msmsmsScans = load_chunks(
             infile=infile,
