@@ -184,7 +184,8 @@ def extract_gradient(in_path):
     
     found = 0
     for text in n_methods:
-        #print(text)
+        #for n in text.split('\n'):
+            #print(n)
         
         #print(i)
         if 'Gradient:' in text:
@@ -204,6 +205,7 @@ def extract_gradient(in_path):
             
     if found ==0:
         print('Gradient processing not implemented')
+
         return(0,0)
     if len(minutes) != len(b_values):
         raise Exception('len is different')
@@ -729,7 +731,17 @@ def add_median_injection_time_ms(msScans, df_summary):
     df_summary.drop('median_injection_time_ms', axis=1,inplace=True,errors='ignore')    
     df_summary = df_summary.merge(temp, left_on='Raw file', right_on='Raw file', how='left')
     return df_summary   
-    
+ 
+
+def add_msms_error(msms, df_summary):
+    for col in tqdm_notebook(['median_MSMS_error_ppm','median_MSMS_error_dalton']):
+        temp = msms.groupby('Raw file')[col].median()
+        temp = temp.to_frame().reset_index()
+        temp.columns = ['Raw file', col]
+        df_summary.drop(col, axis=1,inplace=True,errors='ignore')    
+        df_summary = df_summary.merge(temp, left_on='Raw file', right_on='Raw file', how='left')                
+    return df_summary
+ 
 def add_median_injection_time_msms(msmsScans, df_summary):
     col = 'Ion injection time'
     temp = msmsScans.groupby('Raw file')[col].median()
@@ -835,122 +847,160 @@ def add_spray_instability_ms(msScans, df_summary):
     df_summary = df_summary.merge(temp, left_on='Raw file', right_on='Raw file', how='left')
     return df_summary
 
-def qc_pipline(TXT_PATH):
-
+def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsScans=False,
+                parse_msms = False):
+    
+    msScans = pd.DataFrame()
+    msmsIdentified = pd.DataFrame()
+    msmsScans = pd.DataFrame()
+    msmsmsScans = pd.DataFrame()
+    msms = pd.DataFrame()
+    
     df_summary= pd.read_csv(os.path.join(TXT_PATH,'summary.txt'), sep='\t')
     print('summary shape:', df_summary.shape)
     # ms-ms Data
-    print('parse msmsScans')
-    infile = os.path.join(TXT_PATH,'msmsScans.txt')
-    chunks = find_chunks(infile)
-    msmsScans = load_chunks(
-        infile=infile,
-        usecols = __msms_columns,
-        dtype = __dtype,
-        tot_chunks=chunks)
-    #msmsScans.head()
-    msmsScans['RT_round']=msmsScans['Retention time'].astype(int)
-    msmsScans.loc[:,'RT_bin_qcut'] = msmsScans.groupby('Raw file')['Retention time'].transform(
-        lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
-
-
-    # msms Identified
-    print('parse msmsIdentified')
-    msmsIdentified = msmsScans[msmsScans['Identified']=='+'].copy()
-    msmsIdentified.loc[:, 'RT_bin_rank'] = msmsIdentified.groupby('Raw file')['Retention time'].rank()
-    msmsIdentified.loc[:,'RT_bin_rank_cut'] = msmsIdentified.groupby('Raw file')['RT_bin_rank'].transform(
-        lambda x: pd.cut(x, 4, labels=[1,2,3,4], duplicates='drop'))
-    #msmsIdentified.head()
-    # ms Data
     
-    df_summary = add_max_retention_time(msmsScans, df_summary)
-    df_summary = add_median_injection_time_msms(msmsScans, df_summary)
-    df_summary = add_retention_spread(msmsIdentified, df_summary)
-    df_summary = add_pep_min(msmsIdentified, df_summary)
-    df_summary = add_spray_instability_msms(msmsScans, df_summary)
-    
-    infile = os.path.join(TXT_PATH,'msScans.txt')
-    if os.path.exists(infile):
-        print('parse msScans')
+    if parse_msmsScans:
+        print('parse msmsScans')
+        infile = os.path.join(TXT_PATH,'msmsScans.txt')
         chunks = find_chunks(infile)
-        msScans = load_chunks(
+        msmsScans = load_chunks(
             infile=infile,
-            usecols = __ms_columns,
+            usecols = __msms_columns,
             dtype = __dtype,
             tot_chunks=chunks)
-        msScans['RT_round']=msScans['Retention time'].astype(int)
-        msScans['RT_bin_qcut'] = msScans.groupby('Raw file')['Retention time'].transform(
-            lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
-        df_summary = add_median_injection_time_ms(msScans, df_summary)
-        df_summary = add_spray_instability_ms(msScans, df_summary)
-    else:
-        print('msScans does not exist')
-        msScans = pd.DataFrame()
-        #load the summary file output of maxquant        
-        
-        
-    infile = os.path.join(TXT_PATH,'ms3Scans.txt')
-    if os.path.exists(infile) and os.path.getsize(infile) > 0:
-        print('parse ms3Scans')
-        chunks = find_chunks(infile)
-        msmsmsScans = load_chunks(
-            infile=infile,
-            usecols = __msmsms_columns,
-            dtype = __dtype,
-            tot_chunks=chunks)
-        #msmsmsScans.head()
-        msmsmsScans['RT_round']=msmsmsScans['Retention time'].astype(int)
-        msmsmsScans.loc[:,'RT_bin_qcut'] = msmsmsScans.groupby('Raw file')['Retention time'].transform(
+        #msmsScans.head()
+        msmsScans['RT_round']=msmsScans['Retention time'].astype(int)
+        msmsScans.loc[:,'RT_bin_qcut'] = msmsScans.groupby('Raw file')['Retention time'].transform(
             lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
 
-    else:
-        print('ms3Scans does not exist')
-        msmsmsScans = pd.DataFrame()
-        #load the summary file output of maxquant        
+
+        # msms Identified
+        print('parse msmsIdentified')
+        msmsIdentified = msmsScans[msmsScans['Identified']=='+'].copy()
+        msmsIdentified.loc[:, 'RT_bin_rank'] = msmsIdentified.groupby('Raw file')['Retention time'].rank()
+        msmsIdentified.loc[:,'RT_bin_rank_cut'] = msmsIdentified.groupby('Raw file')['RT_bin_rank'].transform(
+            lambda x: pd.cut(x, 4, labels=[1,2,3,4], duplicates='drop'))
+        #msmsIdentified.head()
+        # ms Data
+    
+        df_summary = add_max_retention_time(msmsScans, df_summary)
+        df_summary = add_median_injection_time_msms(msmsScans, df_summary)
+        df_summary = add_retention_spread(msmsIdentified, df_summary)
+        df_summary = add_pep_min(msmsIdentified, df_summary)
+        df_summary = add_spray_instability_msms(msmsScans, df_summary)
+    
+    if parse_msScans:
+        infile = os.path.join(TXT_PATH,'msScans.txt')
+        if os.path.exists(infile):
+            print('parse msScans')
+            chunks = find_chunks(infile)
+            msScans = load_chunks(
+                infile=infile,
+                usecols = __ms_columns,
+                dtype = __dtype,
+                tot_chunks=chunks)
+            msScans['RT_round']=msScans['Retention time'].astype(int)
+            msScans['RT_bin_qcut'] = msScans.groupby('Raw file')['Retention time'].transform(
+                lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
+            df_summary = add_median_injection_time_ms(msScans, df_summary)
+            df_summary = add_spray_instability_ms(msScans, df_summary)
+        else:
+            print('msScans does not exist')
+            msScans = pd.DataFrame()
+            #load the summary file output of maxquant        
+        
+    if parse_msmsmsScans:   
+        infile = os.path.join(TXT_PATH,'ms3Scans.txt')
+        if os.path.exists(infile) and os.path.getsize(infile) > 0:
+            print('parse ms3Scans')
+            chunks = find_chunks(infile)
+            msmsmsScans = load_chunks(
+                infile=infile,
+                usecols = __msmsms_columns,
+                dtype = __dtype,
+                tot_chunks=chunks)
+            #msmsmsScans.head()
+            msmsmsScans['RT_round']=msmsmsScans['Retention time'].astype(int)
+            msmsmsScans.loc[:,'RT_bin_qcut'] = msmsmsScans.groupby('Raw file')['Retention time'].transform(
+                lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
+
+        else:
+            print('ms3Scans does not exist')
+            msmsmsScans = pd.DataFrame()
+            #load the summary file output of maxquant        
+
 
     infile = os.path.join(TXT_PATH,'msms.txt')
     #this columns is spelled in different cases
     #according to the maxquant version
-    new_header = 'Mass Deviations [ppm]' 
+    if parse_msms:   
+        if os.path.exists(infile) and os.path.getsize(infile) > 0:
+            new_headers = ['Mass Deviations [ppm]', 'Mass Deviations [Da]']
+            temp_cols = [n for n in __msms_file_columns ]
+            for line in open(infile):
+                if 'Mass deviations [ppm]' in line:
+                    #print('ooooooooooooo')
+                    temp_cols = [n for n in __msms_file_columns if n != 'Mass Deviations [ppm]']
+                    temp_cols = [n for n in temp_cols if n != 'Mass Deviations [Da]']
+                    
+                    temp_cols+=['Mass deviations [ppm]','Mass deviations [Da]']
+                    new_headers = ['Mass deviations [ppm]','Mass deviations [Da]']
+                break
         
-    if os.path.exists(infile) and os.path.getsize(infile) > 0:
-        new_headers = ['Mass Deviations [ppm]', 'Mass Deviations [Da]']
-        temp_cols = [n for n in __msms_file_columns ]
-        for line in open(infile):
-            if 'Mass deviations [ppm]' in line:
-                print('ooooooooooooo')
-                temp_cols = [n for n in __msms_file_columns if n != 'Mass Deviations [ppm]']
-                temp_cols = [n for n in temp_cols if n != 'Mass Deviations [Da]']
-                
-                temp_cols+=['Mass deviations [ppm]','Mass deviations [Da]']
-                new_headers = ['Mass deviations [ppm]','Mass deviations [Da]']
-        
-            break
-    
- 
-        chunks = find_chunks(infile)
-        print('parse msms')
-        print(temp_cols)
-        msms= load_chunks(
-            infile=infile,
-            usecols = temp_cols,
-            dtype = __dtype,
-            tot_chunks=chunks)
-        #msms.head()
-        msms['RT_round']=msms['Retention time'].astype(int)
-        msms.loc[:,'RT_bin_qcut'] = msms.groupby('Raw file')['Retention time'].transform(
-            lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
+     
+            chunks = find_chunks(infile)
+            print('parse msms')
+            print(temp_cols)
+            msms= load_chunks(
+                infile=infile,
+                usecols = temp_cols,
+                dtype = __dtype,
+                tot_chunks=chunks)
+            #msms.head()
+            msms['RT_round']=msms['Retention time'].astype(int)
+            msms.loc[:,'RT_bin_qcut'] = msms.groupby('Raw file')['Retention time'].transform(
+                lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
+            print('compute msms fragment median errror')  
             
-        def compute_mean(X):
-            X= np.mean([float(n) for n in X.split(';')])
-            return X
-        for col in new_headers:
-            msms['mean_MSMS_error'+col.split(' ')[-1]]=msms[col].apply(compute_mean)    
-
-    else:
-        print('msms does not exist')
-        msms = pd.DataFrame()
-        #load the summary file output of maxquant        
+            
+            #def add_features(df, cols):
+            #    for col in cols:
+            #        df['mean_MSMS_error'+col.split(' ')[-1]] = df[col].apply(lambda x: np.median([float(n) for n in x.split(';')]))
+            #    return df
+            
+            #def parallelize_dataframe(df, func, n_cores, new_headers):
+            #    df_split = np.array_split(df, n_cores)
+            #    pool = Pool(n_cores)
+            #    df = pd.concat(pool.map(func, df_split, new_headers))
+            #    pool.close()
+            #    pool.join()
+            #    return df
+            
+            #import time
+            #start = time.time()
+            #print('start',start)
+            #msms = parallelize_dataframe(msms, add_features, 20, new_headers)
+            #end = time.time()
+            #elapsed = end - start
+            #print('elapsed',elapsed)
+            
+            def compute_median(X):
+                X= np.median([float(n) for n in X.split(';')])
+                return X
+            
+            for col,tag in tqdm_notebook(zip(new_headers,['ppm','dalton'])):
+                temp = []
+                for n in tqdm_notebook(msms[col]):
+                    temp.append(compute_median(n))
+                msms['median_MSMS_error_'+tag]=temp 
+            
+            df_summary = add_msms_error(msms, df_summary)
+            
+        else:
+            print('msms does not exist')
+            msms = pd.DataFrame()
+            #load the summary file output of maxquant        
 
     
     return df_summary, msScans, msmsIdentified, msmsScans, msmsmsScans, msms
