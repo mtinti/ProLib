@@ -1,7 +1,7 @@
 ![title](https://github.com/mtinti/ProLib/blob/master/static/wcar.png)
 # ProteomicLib
 
-## QC library for MaxQuant output files
+## Python Library for QC and Data Analysis
 
 ![title](https://github.com/mtinti/ProLib/blob/master/static/example.png)
 
