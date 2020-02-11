@@ -1,4 +1,4 @@
-![title](https://github.com/mtinti/ProLib/blob/master/static/ANTI-INFECTIVES-RGB_200pc.png)
+![title](https://github.com/mtinti/ProLib/blob/master/static/wcar.png)
 # ProteomicLib
 
 ## QC library for MaxQuant output files
