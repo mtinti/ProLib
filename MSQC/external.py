@@ -989,8 +989,9 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
                 X= np.median([float(n) for n in X.split(';')])
                 return X
             
-            for col,tag in tqdm_notebook(zip(new_headers,['ppm','dalton'])):
+            for col,tag in zip(new_headers,['ppm','dalton']):
                 temp = []
+                print('parse', col, 'error')
                 for n in tqdm_notebook(msms[col]):
                     temp.append(compute_median(n))
                 msms['median_MSMS_error_'+tag]=temp 
