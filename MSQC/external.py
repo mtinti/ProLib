@@ -805,12 +805,12 @@ def add_spray_instability(dfScans, df_summary,tag='msms'):
     temp1 = temp.groupby('Raw file')['jump'].sum()
     temp2 = temp.groupby('Raw file')['jump'].sum()/temp.groupby('Raw file').size()
     
-    temp1 = temp.to_frame().reset_index()
+    temp1 = temp.reset_index()
     temp1.columns = ['Raw file', 'spray_instability_'+tag]
     df_summary.drop('spray_instability_'+tag, axis=1,inplace=True,errors='ignore') 
     df_summary = df_summary.merge(temp1, left_on='Raw file', right_on='Raw file', how='left')
     
-    temp2 = temp.to_frame().reset_index()
+    temp2 = temp.reset_index()
     temp2.columns = ['Raw file', 'spray_instability_norm_'+tag]
     df_summary.drop('spray_instability_norm_'+tag, axis=1,inplace=True,errors='ignore') 
     df_summary = df_summary.merge(temp2, left_on='Raw file', right_on='Raw file', how='left')
