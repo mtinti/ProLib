@@ -734,7 +734,7 @@ def add_median_injection_time_ms(msScans, df_summary):
  
 
 def add_msms_error(msms, df_summary):
-    for col in tqdm_notebook(['median_MSMS_error_ppm','median_MSMS_error_dalton']):
+    for col in ['median_MSMS_error_ppm','median_MSMS_error_dalton']:
         temp = msms.groupby('Raw file')[col].median()
         temp = temp.to_frame().reset_index()
         temp.columns = ['Raw file', col]
@@ -786,31 +786,49 @@ def add_pep_min(msmsIdentified, df_summary):
     return df_summary
 
 def add_spray_instability(dfScans, df_summary,tag='msms'):
-    temp = dfScans[
+    #temp = dfScans[dfScans['RT_bin_qcut'].isin([2,3])]
         #extract the middle part for each raw file
-        dfScans['RT_bin_qcut'].isin([2,3])][['Raw file', 'RT_round', 'Total ion current']].groupby(
+        
+        #[['Raw file', 'RT_round', 'Total ion current']].groupby(
         #get the ion current column, and groupby raw file
-        ['Raw file','RT_round']).median()
+        #['Raw file','RT_round']).median()
 
+    #temp['pct'] = temp.groupby(
+     #   ['Raw file'])['Total ion current'].apply(
+    #    #compute percentage change
+     #   lambda x: x.pct_change())  
+    
+    temp = dfScans[dfScans['RT_bin_qcut'].isin([2,3])]
     temp['pct'] = temp.groupby(
         ['Raw file'])['Total ion current'].apply(
         #compute percentage change
-        lambda x: x.pct_change())  
+        lambda x: x.pct_change())
+    
     def test(x):
-        if x>=10 or x<=-10:
-            return True
-        return False   
+        if x>=10:
+            return 1
+        elif x<0 and x<=-0.9:
+            return 1
+        return 0 
+        
     temp['jump']=temp['pct'].apply(test)
-    
+    print(temp.head())
+    #print(temp.head())
     temp1 = temp.groupby('Raw file')['jump'].sum()
+    print(temp1.head())
     temp2 = temp.groupby('Raw file')['jump'].sum()/temp.groupby('Raw file').size()
+    del temp
+    gc.collect()
     
-    temp1 = temp.reset_index()
+    #print(temp1.head())
+    #print(temp2.head())
+    temp1 = temp1.reset_index()
+    
     temp1.columns = ['Raw file', 'spray_instability_'+tag]
     df_summary.drop('spray_instability_'+tag, axis=1,inplace=True,errors='ignore') 
     df_summary = df_summary.merge(temp1, left_on='Raw file', right_on='Raw file', how='left')
     
-    temp2 = temp.reset_index()
+    temp2 = temp2.reset_index()
     temp2.columns = ['Raw file', 'spray_instability_norm_'+tag]
     df_summary.drop('spray_instability_norm_'+tag, axis=1,inplace=True,errors='ignore') 
     df_summary = df_summary.merge(temp2, left_on='Raw file', right_on='Raw file', how='left')
