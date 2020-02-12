@@ -814,7 +814,6 @@ def add_spray_instability(dfScans, df_summary,tag='msms'):
     temp2.columns = ['Raw file', 'spray_instability_norm_'+tag]
     df_summary.drop('spray_instability_norm_'+tag, axis=1,inplace=True,errors='ignore') 
     df_summary = df_summary.merge(temp2, left_on='Raw file', right_on='Raw file', how='left')
-    
     return df_summary
 
 def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsScans=False,
