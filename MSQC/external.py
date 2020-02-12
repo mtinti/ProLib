@@ -753,22 +753,7 @@ def add_median_injection_time_msms(msmsScans, df_summary):
     df_summary = df_summary.merge(temp, left_on='Raw file', right_on='Raw file', how='left')
     return df_summary
     
-def add_retention_spread(msmsIdentified, df_summary):
-    temp_max = msmsIdentified[msmsIdentified['RT_bin_rank_cut']==2].groupby(
-        ['Raw file'])['Retention time'].max()
-    temp_max = temp_max.to_frame().reset_index()
-    temp_max.columns = ['Raw file', 'retention_spread']
-    
-    df_summary.drop('retention_spread', axis=1,inplace=True,errors='ignore')  
-    df_summary = df_summary.merge(temp_max, left_on='Raw file', right_on='Raw file', how='left')
-    
-    df_summary.drop('norm_retention_spread', axis=1,inplace=True,errors='ignore')
-    df_summary['norm_retention_spread']=(df_summary['retention_spread']*2)/df_summary['max_retention_time']
-    
-    df_summary.drop('abs_retention_spread', axis=1,inplace=True,errors='ignore')
-    df_summary['abs_retention_spread'] = abs(1-df_summary['norm_retention_spread'])
-    return df_summary
-
+   
 def add_retention_spread(msmsIdentified, df_summary):
     temp_max = msmsIdentified[msmsIdentified['RT_bin_rank_cut']==2].groupby(
         ['Raw file'])['Retention time'].max()
@@ -800,51 +785,36 @@ def add_pep_min(msmsIdentified, df_summary):
     df_summary = df_summary.merge(temp, left_on='Raw file', right_on='Raw file', how='left')
     return df_summary
 
-def add_spray_instability_msms(msmsScans, df_summary):
-    temp = msmsScans[
+def add_spray_instability(dfScans, df_summary,tag='msms'):
+    temp = dfScans[
         #extract the middle part for each raw file
-        msmsScans['RT_bin_qcut'].isin([2,3])][['Raw file', 'RT_round', 'Total ion current']].groupby(
+        dfScans['RT_bin_qcut'].isin([2,3])][['Raw file', 'RT_round', 'Total ion current']].groupby(
         #get the ion current column, and groupby raw file
         ['Raw file','RT_round']).median()
 
-    temp = temp.groupby(
+    temp['pct'] = temp.groupby(
         ['Raw file'])['Total ion current'].apply(
         #compute percentage change
-        lambda x: x.pct_change()).groupby(
-        ['Raw file']).apply(
-        #compute if it's greather than 10
-        lambda x: x.ge(10)
-        #find how many times is hover the threshold
-        #apparenty, apply of apply return df
-        ).groupby('Raw file').apply(lambda x: x.sum())
+        lambda x: x.pct_change())  
+    def test(x):
+        if x>=10 or x<=-10:
+            return True
+        return False   
+    temp['jump']=temp['pct'].apply(test)
     
-    temp = temp.to_frame().reset_index()
-    temp.columns = ['Raw file', 'spray_instability_msms']
-    df_summary.drop('spray_instability_msms', axis=1,inplace=True,errors='ignore') 
-    df_summary = df_summary.merge(temp, left_on='Raw file', right_on='Raw file', how='left')
-    return df_summary
-
-def add_spray_instability_ms(msScans, df_summary):
-    temp = msScans[
-        #extract the middle part for each raw file
-        msScans['RT_bin_qcut'].isin([2,3])][['Raw file','RT_round', 'Total ion current']].groupby(
-        #get the ion current column, and groupby raw file an minute
-        ['Raw file','RT_round']).median()
-    temp = temp.groupby(
-        ['Raw file'])['Total ion current'].apply(
-        #compute percentage change
-        lambda x: x.pct_change()).groupby(
-        ['Raw file']).apply(
-        #compute if it's greather than 10
-        lambda x: x.ge(10)
-        #find how many times is hover the threshold
-        #apparenty, apply of apply return df
-        ).groupby('Raw file').apply(lambda x: x.sum())
-
-    temp = temp.to_frame().reset_index()
-    temp.columns = ['Raw file', 'spray_instability_ms']
-    df_summary.drop('spray_instability_ms', axis=1,inplace=True, errors='ignore') 
-    df_summary = df_summary.merge(temp, left_on='Raw file', right_on='Raw file', how='left')
+    temp1 = temp.groupby('Raw file')['jump'].sum()
+    temp2 = temp.groupby('Raw file')['jump'].sum()/temp.groupby('Raw file').size()
+    
+    temp1 = temp.to_frame().reset_index()
+    temp1.columns = ['Raw file', 'spray_instability_'+tag]
+    df_summary.drop('spray_instability_'+tag, axis=1,inplace=True,errors='ignore') 
+    df_summary = df_summary.merge(temp1, left_on='Raw file', right_on='Raw file', how='left')
+    
+    temp2 = temp.to_frame().reset_index()
+    temp2.columns = ['Raw file', 'spray_instability_norm_'+tag]
+    df_summary.drop('spray_instability_norm_'+tag, axis=1,inplace=True,errors='ignore') 
+    df_summary = df_summary.merge(temp2, left_on='Raw file', right_on='Raw file', how='left')
+    
     return df_summary
 
 def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsScans=False,
@@ -888,7 +858,7 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
         df_summary = add_median_injection_time_msms(msmsScans, df_summary)
         df_summary = add_retention_spread(msmsIdentified, df_summary)
         df_summary = add_pep_min(msmsIdentified, df_summary)
-        df_summary = add_spray_instability_msms(msmsScans, df_summary)
+        df_summary = add_spray_instability(msmsScans, df_summary,tag='msms')
     
     if parse_msScans:
         infile = os.path.join(TXT_PATH,'msScans.txt')
@@ -904,7 +874,7 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
             msScans['RT_bin_qcut'] = msScans.groupby('Raw file')['Retention time'].transform(
                 lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
             df_summary = add_median_injection_time_ms(msScans, df_summary)
-            df_summary = add_spray_instability_ms(msScans, df_summary)
+            df_summary = add_spray_instability(msScans, df_summary, tag='ms')
         else:
             print('msScans does not exist')
             msScans = pd.DataFrame()
