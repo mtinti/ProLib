@@ -6,9 +6,20 @@ conda install numpy=1.16.3
 
 
 install.packages("BiocManager", repos='https://cran.ma.imperial.ac.uk/')
+
+
+
+install_name_tool -change \
+    /usr/lib/libc++abi.dylib \
+    /Library/Frameworks/R.framework/Resources/lib/libc++abi.1.dylib \
+    /Library/Frameworks/R.framework/Resources/lib/libc++.1.dylib
+
 BiocManager::install("sva") # install limma
 BiocManager::install("DESeq2")
 BiocManager::install("edgeR")
+
+
+
 
 install.packages("tidyverse")
 install.packages("gridExtra")
@@ -17,6 +28,13 @@ install.packages("locfit")
 
 
 install.packages("sva")
+
+
+update.packages(ask=FALSE,checkBuilt=TRUE,repos="https://cloud.r-project.org")
+
+install.packages(c("tidyverse", "caret"), dependencies=TRUE,repos="https://cloud.r-project.org")
+
+
 
 
  
