@@ -380,19 +380,20 @@ def make_vulcano(df, ax, x='-Log10PValue',
         #print(upper.head())
         upper.plot(
         kind='scatter',x=x,y=y, ax=ax, 
-        c='r', label='Up'.format(fc_limit), alpha=0.5, zorder=5)
+        c='r', label='Bigger Than {fc_limit}'.format(fc_limit=fc_limit), alpha=0.5, zorder=5)
         to_remove.append(upper)
         
     if 'lower' in locals() and lower.shape[0]>0:     
         lower.plot(
         kind='scatter',x=x,y=y, ax=ax, 
-        c='g', label='Down'.format(fc_limit), alpha=0.5, zorder=5)       
+        c='g', label='Lower Than {fc_limit}'.format(fc_limit=fc_limit), alpha=0.5, zorder=5)       
         to_remove.append(lower)
 
 
     if len(annot_index) > 0:
         df.loc[annot_index].plot(kind='scatter', x=x, y=y, c='r', 
-                                 s=point_size_selection, ax=ax, label=label_for_selection, alpha=1, zorder=10)
+                                 s=point_size_selection, ax=ax, 
+                                 label=label_for_selection, alpha=1, zorder=10)
         to_remove.append(df.loc[annot_index])
                 
 
@@ -427,8 +428,9 @@ def make_vulcano(df, ax, x='-Log10PValue',
         #print(texts)
         if do_adjust_text:
             #print('adjusting text')
-            adjust_text(texts, arrowprops=dict(arrowstyle='->',
-                                               color='red'),
+            adjust_text(texts, arrowprops=dict(arrowstyle='-',
+                                               color='red',lw=0.8),
+                                               #only_move={'points':'x', 'text':'x'},
                         ax=ax)
 
     
