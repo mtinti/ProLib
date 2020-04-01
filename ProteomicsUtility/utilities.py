@@ -21,11 +21,11 @@ plt.style.use('ggplot')
 def namestr(obj, namespace):
     return [name for name in namespace if namespace[name] is obj][0]
 
-def compare_sets(s1=set(),s2=set()):
+def compare_sets(s1=set(),s2=set(),name1='s1',name2='s2'):
     common = len(set(s1) & set(s2))
     uS1 = len(set(s1) - set(s2))
     uS2 = len(set(s2) - set(s1))
-    res = pd.DataFrame(columns=[namestr(s1,globals()),namestr(s2,globals())])
+    res = pd.DataFrame(columns=[name1,name2])
     res.loc['size',:]=[len(s1),len(s2)]
     res.loc['common',:]=[common,common]
     res.loc['unique',:]=[uS1,uS2]
