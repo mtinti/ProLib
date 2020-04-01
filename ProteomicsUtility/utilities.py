@@ -15,7 +15,38 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import missingno as msno
 import matplotlib
+import inspect, re
 plt.style.use('ggplot')
+
+def namestr(obj, namespace):
+    return [name for name in namespace if namespace[name] is obj][0]
+
+def compare_sets(s1=set(),s2=set()):
+    common = len(set(s1) & set(s2))
+    uS1 = len(set(s1) - set(s2))
+    uS2 = len(set(s2) - set(s1))
+    res = pd.DataFrame(columns=[namestr(s1,globals()),namestr(s2,globals())])
+    res.loc['size',:]=[len(s1),len(s2)]
+    res.loc['common',:]=[common,common]
+    res.loc['unique',:]=[uS1,uS2]
+    str_report="""
+    {lenS1} in {s1}
+    {lenS2} in {s2} 
+    {common} in common
+    {uS1} unique {s1}
+    {uS2} unique in {s2}     
+    """.format(
+        s1 = res.columns[0],
+        s2 = res.columns[1],
+        lenS1 = res.loc['size',res.columns[0]],
+        lenS2 = res.loc['size',res.columns[1]],
+        common=res.loc['common',res.columns[0]],
+        uS1 = res.loc['unique',res.columns[0]],
+        uS2 = res.loc['unique',res.columns[1]],
+              )
+    return str_report,res
+
+
 
 
 def quantileNormalize(df_input, keep_na=True):
@@ -439,6 +470,9 @@ def make_vulcano(df, ax, x='-Log10PValue',
     ax.set_title(title)
     ax.yaxis.label.set_size(12)
     ax.xaxis.label.set_size(12)
+
+
+
 #helper function to visualize the correlation between experiments
 def plot_correlation(df, figname='corr_prot'):
     #function to annotate the axes with
