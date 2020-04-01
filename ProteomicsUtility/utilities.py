@@ -132,13 +132,7 @@ def clean_df(df, id_by_site=True, rev_database=True,
     print_result(start, before, df, col)
     return df  
 
-#format legend of hist plots 
-#with lines instead of boxes
-def hist_legend(ax, title = False):
-    handles, labels = ax.get_legend_handles_labels()
-    new_handles = [Line2D([], [], c=h.get_edgecolor()) for h in handles]
-    ax.legend(handles=new_handles, labels=labels, 
-    title=title,loc='center left', bbox_to_anchor=(1, 0.5))  
+
 
 
 #extract the description from the fasta headers
@@ -296,12 +290,15 @@ def make_mds(in_df, palette, ax, top=500,
         title='Groups',loc='center left', bbox_to_anchor=(1, 0.9))
     return ax
 
+
 #format legend of hist plots 
 #with lines instead of boxes
-def hist_legend(ax):
+def hist_legend(ax, title = False):
     handles, labels = ax.get_legend_handles_labels()
     new_handles = [Line2D([], [], c=h.get_edgecolor()) for h in handles]
-    ax.legend(handles=new_handles, labels=labels)
+    ax.legend(handles=new_handles, labels=labels, 
+    title=title,loc='center left', bbox_to_anchor=(1, 0.5))  
+
 
 #get a random distribution of numbers 
 #around the minimum value 
@@ -647,14 +644,14 @@ class CV():
         cv_means = []
         cv_stds = []
         cvs = []
-        for group in groups:
+        for group in self.groups:
             #print(group,groups[group])
             #if group == 1:
                #print(data[groups[group]].head())
-            temp = data[groups[group]].replace(0,np.nan).mean(axis=1, skipna=True)
+            temp = data[self.groups[group]].replace(0,np.nan).mean(axis=1, skipna=True)
             cv_means.append(temp)
             #print(temp)
-            temp = data[groups[group]].replace(0,np.nan).std(axis=1, skipna=True)
+            temp = data[self.groups[group]].replace(0,np.nan).std(axis=1, skipna=True)
             cv_stds.append(temp)
 
         for std,mean, group in zip(cv_stds, cv_means, groups):
