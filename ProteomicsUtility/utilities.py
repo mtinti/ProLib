@@ -590,7 +590,7 @@ class IRS():
             irs.append(temp)
         irs=pd.concat(irs,axis=1)
         #geometric mean of the sum intensity of all the proteins
-        irs['average']=np.exp(np.log(irs.replace(0,np.nan)).mean(axis=1, skipna=True))
+        irs['average']=np.exp(np.log(irs.replace(0,np.nan)).mean(axis=1))#, skipna=True))
         print(irs.head())    
         
         norm_factors = []
@@ -644,14 +644,15 @@ class CV():
         cv_means = []
         cv_stds = []
         cvs = []
-        for group in self.groups:
+        groups = self.groups
+        for group in groups:
             #print(group,groups[group])
             #if group == 1:
                #print(data[groups[group]].head())
-            temp = data[self.groups[group]].replace(0,np.nan).mean(axis=1, skipna=True)
+            temp = data[groups[group]].replace(0,np.nan).mean(axis=1, skipna=True)
             cv_means.append(temp)
             #print(temp)
-            temp = data[self.groups[group]].replace(0,np.nan).std(axis=1, skipna=True)
+            temp = data[groups[group]].replace(0,np.nan).std(axis=1, skipna=True)
             cv_stds.append(temp)
 
         for std,mean, group in zip(cv_stds, cv_means, groups):
