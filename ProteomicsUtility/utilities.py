@@ -432,11 +432,11 @@ def make_vulcano(df, ax, x='-Log10PValue',
         to_remove=pd.concat(to_remove)
         idx = df.index.difference(to_remove.index)
         df.loc[idx].plot(kind='scatter', x=x, y=y, ax=ax, 
-                         alpha=alpha_main,c='b', zorder=0, label=label_for_all,
+                         alpha=alpha_main,c='b', zorder=1, label=label_for_all,
                         s=point_size_all)
     else:
         df.plot(kind='scatter', x=x, y=y, ax=ax, 
-                alpha=alpha_main,c='b', zorder=0,label=label_for_all,s=point_size_all)
+                alpha=alpha_main,c='b', zorder=1,label=label_for_all,s=point_size_all)
     
     if rolling_mean:
         df = df.sort_values(x,ascending=False)
