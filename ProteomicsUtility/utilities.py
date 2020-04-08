@@ -458,10 +458,10 @@ def make_vulcano(df, ax, x='-Log10PValue',
             #print('adjusting text')
             adjust_text(texts, arrowprops=dict(arrowstyle='-',
                                                color='red',lw=0.8),
-                                               force_text=(0.2, 0.4),
+                                               force_text=(0.1, 0.2),
                                                va='bottom',
                                                lim=1000,
-                                               expand_text=(1.5, 1.8),
+                                               expand_text=(1.8, 1.8),
                                                #only_move={'points':'x', 'text':'x'},
                         ax=ax)
 
@@ -471,6 +471,7 @@ def make_vulcano(df, ax, x='-Log10PValue',
     ax.set_title(title)
     ax.yaxis.label.set_size(12)
     ax.xaxis.label.set_size(12)
+    return ax
 
 
 
