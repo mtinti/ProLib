@@ -381,7 +381,9 @@ def make_vulcano(df, ax, x='-Log10PValue',
                  text_size = 8,
                  rolling_mean = False,
                  alpha_main=0.05,
-                point_size_selection=1,point_size_all=1):
+                point_size_selection=1,
+                point_size_all=1,
+                fontdict=None):
     
 
     if fc_limit and pval_limit:
@@ -451,7 +453,7 @@ def make_vulcano(df, ax, x='-Log10PValue',
 
 
     if add_text:
-        texts = [ax.text(df.loc[i][x], df.loc[i][y],name,fontsize=text_size)
+        texts = [ax.text(df.loc[i][x], df.loc[i][y],name, fontsize=text_size,fontdict=fontdict)
                                for i,name in zip(annot_index,annot_names)]
         #print(texts)
         if do_adjust_text:
@@ -461,7 +463,7 @@ def make_vulcano(df, ax, x='-Log10PValue',
                                                force_text=(0.1, 0.2),
                                                va='bottom',
                                                lim=1000,
-                                               expand_text=(1.8, 1.8),
+                                               expand_text=(1.2, 1.2),
                                                #only_move={'points':'x', 'text':'x'},
                         ax=ax)
 
