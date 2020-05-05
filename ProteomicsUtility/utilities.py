@@ -383,7 +383,10 @@ def make_vulcano(df, ax, x='-Log10PValue',
                  alpha_main=0.05,
                 point_size_selection=1,
                 point_size_all=1,
-                fontdict=None):
+                fontdict=None,
+                expand_text=None,
+                force_text=None,
+                expand_points=None):
     
 
     if fc_limit and pval_limit:
@@ -458,12 +461,20 @@ def make_vulcano(df, ax, x='-Log10PValue',
         #print(texts)
         if do_adjust_text:
             #print('adjusting text')
+            if not expand_text:
+                expand_text=(1.1, 1.1)
+            if not force_text:
+                force_text=(0.1, 0.2)
+            if not expand_points:
+                expand_points=(1.05, 1.2)
+
             adjust_text(texts, arrowprops=dict(arrowstyle='-',
                                                color='red',lw=0.8),
-                                               force_text=(0.1, 0.2),
+                                               force_text=force_text,
                                                va='bottom',
                                                lim=1000,
-                                               expand_text=(1.2, 1.2),
+                                               expand_text=expand_text,
+                                               autoalign='xy',
                                                #only_move={'points':'x', 'text':'x'},
                         ax=ax)
 
