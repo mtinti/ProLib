@@ -37,4 +37,8 @@ install.packages(c("tidyverse", "caret"), dependencies=TRUE,repos="https://cloud
 
 
 
+<<<<<<< HEAD
  
+=======
+ 
+>>>>>>> 1034dc82643b87ce1e262ae21af00e6de966e518

@@ -15,7 +15,38 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import missingno as msno
 import matplotlib
+import inspect, re
 plt.style.use('ggplot')
+
+def namestr(obj, namespace):
+    return [name for name in namespace if namespace[name] is obj][0]
+
+def compare_sets(s1=set(),s2=set(),name1='s1',name2='s2'):
+    common = len(set(s1) & set(s2))
+    uS1 = len(set(s1) - set(s2))
+    uS2 = len(set(s2) - set(s1))
+    res = pd.DataFrame(columns=[name1,name2])
+    res.loc['size',:]=[len(s1),len(s2)]
+    res.loc['common',:]=[common,common]
+    res.loc['unique',:]=[uS1,uS2]
+    str_report="""
+    {lenS1} in {s1}
+    {lenS2} in {s2} 
+    {common} in common
+    {uS1} unique {s1}
+    {uS2} unique in {s2}     
+    """.format(
+        s1 = res.columns[0],
+        s2 = res.columns[1],
+        lenS1 = res.loc['size',res.columns[0]],
+        lenS2 = res.loc['size',res.columns[1]],
+        common=res.loc['common',res.columns[0]],
+        uS1 = res.loc['unique',res.columns[0]],
+        uS2 = res.loc['unique',res.columns[1]],
+              )
+    return str_report,res
+
+
 
 
 def quantileNormalize(df_input, keep_na=True):
@@ -101,13 +132,7 @@ def clean_df(df, id_by_site=True, rev_database=True,
     print_result(start, before, df, col)
     return df  
 
-#format legend of hist plots 
-#with lines instead of boxes
-def hist_legend(ax, title = False):
-    handles, labels = ax.get_legend_handles_labels()
-    new_handles = [Line2D([], [], c=h.get_edgecolor()) for h in handles]
-    ax.legend(handles=new_handles, labels=labels, 
-    title=title,loc='center left', bbox_to_anchor=(1, 0.5))  
+
 
 
 #extract the description from the fasta headers
@@ -265,12 +290,15 @@ def make_mds(in_df, palette, ax, top=500,
         title='Groups',loc='center left', bbox_to_anchor=(1, 0.9))
     return ax
 
+
 #format legend of hist plots 
 #with lines instead of boxes
-def hist_legend(ax):
+def hist_legend(ax, title = False):
     handles, labels = ax.get_legend_handles_labels()
     new_handles = [Line2D([], [], c=h.get_edgecolor()) for h in handles]
-    ax.legend(handles=new_handles, labels=labels)
+    ax.legend(handles=new_handles, labels=labels, 
+    title=title,loc='center left', bbox_to_anchor=(1, 0.5))  
+
 
 #get a random distribution of numbers 
 #around the minimum value 
@@ -350,9 +378,15 @@ def make_vulcano(df, ax, x='-Log10PValue',
                  label_for_all = None,
                  add_text = True,
                  do_adjust_text=True,
+                 text_size = 8,
                  rolling_mean = False,
                  alpha_main=0.05,
-                point_size_selection=1,point_size_all=1):
+                point_size_selection=1,
+                point_size_all=1,
+                fontdict=None,
+                expand_text=None,
+                force_text=None,
+                expand_points=None):
     
 
     if fc_limit and pval_limit:
@@ -379,19 +413,20 @@ def make_vulcano(df, ax, x='-Log10PValue',
         #print(upper.head())
         upper.plot(
         kind='scatter',x=x,y=y, ax=ax, 
-        c='r', label='Up'.format(fc_limit), alpha=0.5, zorder=5)
+        c='r', label='Bigger Than {fc_limit}'.format(fc_limit=fc_limit), alpha=0.5, zorder=5)
         to_remove.append(upper)
         
     if 'lower' in locals() and lower.shape[0]>0:     
         lower.plot(
         kind='scatter',x=x,y=y, ax=ax, 
-        c='g', label='Down'.format(fc_limit), alpha=0.5, zorder=5)       
+        c='g', label='Lower Than {fc_limit}'.format(fc_limit=fc_limit), alpha=0.5, zorder=5)       
         to_remove.append(lower)
 
 
     if len(annot_index) > 0:
         df.loc[annot_index].plot(kind='scatter', x=x, y=y, c='r', 
-                                 s=point_size_selection, ax=ax, label=label_for_selection, alpha=1, zorder=10)
+                                 s=point_size_selection, ax=ax, 
+                                 label=label_for_selection, alpha=1, zorder=10)
         to_remove.append(df.loc[annot_index])
                 
 
@@ -402,11 +437,11 @@ def make_vulcano(df, ax, x='-Log10PValue',
         to_remove=pd.concat(to_remove)
         idx = df.index.difference(to_remove.index)
         df.loc[idx].plot(kind='scatter', x=x, y=y, ax=ax, 
-                         alpha=alpha_main,c='b', zorder=0, label=label_for_all,
+                         alpha=alpha_main,c='b', zorder=1, label=label_for_all,
                         s=point_size_all)
     else:
         df.plot(kind='scatter', x=x, y=y, ax=ax, 
-                alpha=alpha_main,c='b', zorder=0,label=label_for_all,s=point_size_all)
+                alpha=alpha_main,c='b', zorder=1,label=label_for_all,s=point_size_all)
     
     if rolling_mean:
         df = df.sort_values(x,ascending=False)
@@ -421,13 +456,26 @@ def make_vulcano(df, ax, x='-Log10PValue',
 
 
     if add_text:
-        texts = [ax.text(df.loc[i][x], df.loc[i][y],name)
+        texts = [ax.text(df.loc[i][x], df.loc[i][y],name, fontsize=text_size,fontdict=fontdict)
                                for i,name in zip(annot_index,annot_names)]
         #print(texts)
         if do_adjust_text:
             #print('adjusting text')
-            adjust_text(texts, arrowprops=dict(arrowstyle='->',
-                                               color='red'),
+            if not expand_text:
+                expand_text=(1.1, 1.1)
+            if not force_text:
+                force_text=(0.1, 0.2)
+            if not expand_points:
+                expand_points=(1.05, 1.2)
+
+            adjust_text(texts, arrowprops=dict(arrowstyle='-',
+                                               color='red',lw=0.8),
+                                               force_text=force_text,
+                                               va='bottom',
+                                               lim=1000,
+                                               expand_text=expand_text,
+                                               autoalign='xy',
+                                               #only_move={'points':'x', 'text':'x'},
                         ax=ax)
 
     
@@ -436,6 +484,10 @@ def make_vulcano(df, ax, x='-Log10PValue',
     ax.set_title(title)
     ax.yaxis.label.set_size(12)
     ax.xaxis.label.set_size(12)
+    return ax
+
+
+
 #helper function to visualize the correlation between experiments
 def plot_correlation(df, figname='corr_prot'):
     #function to annotate the axes with
@@ -556,7 +608,7 @@ class IRS():
             irs.append(temp)
         irs=pd.concat(irs,axis=1)
         #geometric mean of the sum intensity of all the proteins
-        irs['average']=np.exp(np.log(irs.replace(0,np.nan)).mean(axis=1, skipna=True))
+        irs['average']=np.exp(np.log(irs.replace(0,np.nan)).mean(axis=1))#, skipna=True))
         print(irs.head())    
         
         norm_factors = []
@@ -610,6 +662,7 @@ class CV():
         cv_means = []
         cv_stds = []
         cvs = []
+        groups = self.groups
         for group in groups:
             #print(group,groups[group])
             #if group == 1:
