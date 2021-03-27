@@ -170,7 +170,7 @@ def expand_gradient(minutes,b_values):
 
 
 #controller
-def extract_gradient(in_path):
+def extract_gradient(in_path,delay = 0):
     if in_path.lower().endswith('.raw'):
         rawfile = MSFileReader.ThermoRawfile(in_path)  
         n_methods = rawfile.GetNumInstMethods()
@@ -209,7 +209,10 @@ def extract_gradient(in_path):
         return(0,0)
     if len(minutes) != len(b_values):
         raise Exception('len is different')
-    minutes = [int(float(n)) for n in minutes]
+ 
+    minutes = [int(float(n))-delay if int(float(n)) >0 else int(float(n)) for n in minutes]
+    minutes[-1]=    minutes[-1]+delay 
+    #minutes = [int(float(n)) for n in minutes]
     b_values = [int(float(n)) for n in b_values]
     minutes, b_values = expand_gradient(minutes,b_values)
     return (minutes,b_values)
@@ -799,7 +802,7 @@ def add_spray_instability(dfScans, df_summary,tag='msms'):
      #   lambda x: x.pct_change())  
     
     temp = dfScans[dfScans['RT_bin_qcut'].isin([2,3])]
-    temp['pct'] = temp.groupby(
+    temp.loc[:,'pct'] = temp.groupby(
         ['Raw file'])['Total ion current'].apply(
         #compute percentage change
         lambda x: x.pct_change())
@@ -811,11 +814,12 @@ def add_spray_instability(dfScans, df_summary,tag='msms'):
             return 1
         return 0 
         
-    temp['jump']=temp['pct'].apply(test)
-    print(temp.head())
+    #temp['jump']=temp['pct'].apply(test)
+    temp.loc[:,'jump']=temp['pct'].apply(test)
+    #print(temp.head())
     #print(temp.head())
     temp1 = temp.groupby('Raw file')['jump'].sum()
-    print(temp1.head())
+    #print(temp1.head())
     temp2 = temp.groupby('Raw file')['jump'].sum()/temp.groupby('Raw file').size()
     del temp
     gc.collect()
@@ -823,7 +827,6 @@ def add_spray_instability(dfScans, df_summary,tag='msms'):
     #print(temp1.head())
     #print(temp2.head())
     temp1 = temp1.reset_index()
-    
     temp1.columns = ['Raw file', 'spray_instability_'+tag]
     df_summary.drop('spray_instability_'+tag, axis=1,inplace=True,errors='ignore') 
     df_summary = df_summary.merge(temp1, left_on='Raw file', right_on='Raw file', how='left')
@@ -857,7 +860,7 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
             dtype = __dtype,
             tot_chunks=chunks)
         #msmsScans.head()
-        msmsScans['RT_round']=msmsScans['Retention time'].astype(int)
+        msmsScans.loc[:,'RT_round']=msmsScans['Retention time'].astype(int)
         msmsScans.loc[:,'RT_bin_qcut'] = msmsScans.groupby('Raw file')['Retention time'].transform(
             lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
 
@@ -887,8 +890,8 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
                 usecols = __ms_columns,
                 dtype = __dtype,
                 tot_chunks=chunks)
-            msScans['RT_round']=msScans['Retention time'].astype(int)
-            msScans['RT_bin_qcut'] = msScans.groupby('Raw file')['Retention time'].transform(
+            msScans.loc[:,'RT_round']=msScans['Retention time'].astype(int)
+            msScans.loc[:,'RT_bin_qcut'] = msScans.groupby('Raw file')['Retention time'].transform(
                 lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
             df_summary = add_median_injection_time_ms(msScans, df_summary)
             df_summary = add_spray_instability(msScans, df_summary, tag='ms')
@@ -908,7 +911,7 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
                 dtype = __dtype,
                 tot_chunks=chunks)
             #msmsmsScans.head()
-            msmsmsScans['RT_round']=msmsmsScans['Retention time'].astype(int)
+            msmsmsScans.loc[:,'RT_round']=msmsmsScans['Retention time'].astype(int)
             msmsmsScans.loc[:,'RT_bin_qcut'] = msmsmsScans.groupby('Raw file')['Retention time'].transform(
                 lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
 
@@ -945,7 +948,7 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
                 dtype = __dtype,
                 tot_chunks=chunks)
             #msms.head()
-            msms['RT_round']=msms['Retention time'].astype(int)
+            msms.loc[:,'RT_round']=msms['Retention time'].astype(int)
             msms.loc[:,'RT_bin_qcut'] = msms.groupby('Raw file')['Retention time'].transform(
                 lambda x: pd.qcut(x, 4, labels=[1,2,3,4]))
             print('compute msms fragment median errror')  
@@ -981,7 +984,7 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
                 print('parse', col, 'error')
                 for n in tqdm_notebook(msms[col]):
                     temp.append(compute_median(n))
-                msms['median_MSMS_error_'+tag]=temp 
+                msms.loc[:,'median_MSMS_error_'+tag]=temp 
             
             df_summary = add_msms_error(msms, df_summary)
             
