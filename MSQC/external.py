@@ -31,6 +31,102 @@ import deepdiff
 import json
 import pprint
 import pickle
+sys.path.insert(0, '../')
+from MSFileReader import ThermoRawfile
+from tqdm import tqdm_notebook
+from MSFileReader import ThermoRawfile
+import pandas as pd
+import numpy as np
+
+
+def split_gradient_by_charge(RAW_FILE_PATH, inraw, msmsScans, delay=0):
+
+    minutes, b_values = extract_gradient(os.path.join(RAW_FILE_PATH, 
+                                                     inraw), delay=delay)
+
+    fig,axes = plt.subplots(ncols=3,nrows=2,figsize=(16,10))
+    count =0
+    nrow = 0
+    ncol = 0
+    for i in tqdm_notebook(range(0,6)):
+        if count == 3:
+            nrow+=1
+            ncol=0
+
+        #print(nrow,ncol,i)
+        ax= axes[nrow,ncol]
+
+        temp = msmsScans[msmsScans['Raw file']==inraw.split('.')[0]]
+
+        temp_ = temp[(temp['Charge']==i) & (temp['Identified']=='-')].groupby('RT_round')['Retention time'].size()
+        ax.plot(temp_.index.values, temp_.values,'-', label='Not Identified',color='red')
+
+        temp_ = temp[(temp['Charge']==i) & (temp['Identified']=='+')].groupby('RT_round')['Retention time'].size()
+        ax.plot(temp_.index.values, temp_.values,'-', label='Identified',color='green')  
+
+
+        ax2 = ax.twinx()
+        ax2.plot(minutes,b_values,'g--',alpha=0.5, label='Acetonitrile')
+        ax2.set_ylabel('Acetonitrile %', fontsize=16)
+        ax2.grid(False)
+        ax2.set_yticks(np.arange(5, 100, 10))
+        #ax2.legend(loc='upper center', bbox_to_anchor=(0.95, -0.02))
+
+        ax.set_title('charge=+{}'.format(i))
+        ax.set_ylabel('Retention Time')
+        ax.set_xlabel('Count')
+        count+=1
+        ncol+=1
+
+    plt.suptitle(inraw,y=1.05)
+    plt.tight_layout()   
+    plt.savefig(os.path.join(RAW_FILE_PATH, 'images', inraw+'.by_charge.png'))
+    plt.show()
+
+
+
+def extract_Injection_Time_Table(RAW_FILE_PATH, inrow):
+    rawfile = ThermoRawfile(os.path.join(RAW_FILE_PATH,inrow))
+    out = open(os.path.join(RAW_FILE_PATH,inrow+'.it.csv'),'w')
+    out.write('scanNumber,MSOrder,RT,IIT\n')
+    for scanNumber in tqdm_notebook(range(rawfile.FirstSpectrumNumber, rawfile.LastSpectrumNumber + 1)):
+        out.write(
+            ','.join([
+                str(scanNumber), 
+                str(rawfile.GetMSOrderForScanNum(scanNumber)),
+                str(rawfile.RTFromScanNum(scanNumber)),
+                str(rawfile.GetTrailerExtraForScanNum(scanNumber)['Ion Injection Time (ms)'])
+            ])+'\n')
+    out.close()
+    rawfile.Close()
+
+def plot_Injection_Time(RAW_FILE_PATH, inrow):
+    df = pd.DataFrame.from_csv(os.path.join(RAW_FILE_PATH,inrow+'.it.csv'))
+    nplots = df['MSOrder'].max()
+    fig,axes=plt.subplots(ncols=nplots,nrows=1,figsize=(16,6))
+    for n in range(nplots):
+        ax = axes[n]
+        n=n+1
+        temp = df[df['MSOrder']==n]
+        temp.plot(kind='scatter',x='RT',y='IIT',s=1,ax=ax,label='Ion')
+        temp['RT_round']=temp['RT'].astype(int)
+        temp.groupby('RT_round').median().plot(
+            kind='line',
+            x='RT',
+            y='IIT',
+            ax=ax,
+            label='median')
+        ax.set_title('Injection Time MS{}'.format(n))
+    
+    plt.suptitle(inrow,y=1.05)
+    plt.tight_layout()
+    plt.savefig(os.path.join(RAW_FILE_PATH, 'images', inrow+'.it.csv.png'))
+    plt.show()    
+
+def Injection_Time_pipeline(RAW_FILE_PATH, inrow):
+    extract_Injection_Time_Table(RAW_FILE_PATH, inrow)
+    plot_Injection_Time(RAW_FILE_PATH, inrow)    
+
 
 
 #functions to compare two raw files methods
@@ -345,7 +441,7 @@ def __plot_cycle_time(ax, tempMSdf):
     ax.set_title('QC: Instrument Operativity')
     
 #function to connect all the subplots
-def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=()):
+def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=(),extend=0):
     fig,axes=plt.subplots(figsize=(16,10), ncols=2, 
     nrows=2,  sharex=True)
     #just to be sure
@@ -365,6 +461,9 @@ def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=()):
         ax = axes[a, b]
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label]):
             item.set_fontsize(16)
+        if extend:
+            xmin,xmax=ax.get_xlim()
+            ax.set_xlim(xmin,xmax+extend)
     return fig,axes 
     
 #make a safe file name
