@@ -81,7 +81,7 @@ def print_result(start_df_shape, shape_before, df, what):
     removed = shape_before[0]- df.shape[0]
     removed_from_beginning = start_df_shape[0]-df.shape[0]
     if removed > 0:
-        print ('removed ',removed, 'Protein Groups by:',what )  
+        print ('removed ',removed, 'Protein Groups by:', what )  
         print ('tot ', removed_from_beginning, ' entries removed' )
         print ('---------------')
     else:
@@ -92,7 +92,7 @@ def print_result(start_df_shape, shape_before, df, what):
 #remove rubbish entires from a
 #maxquant output
 def clean_df(df, id_by_site=True, rev_database=True, 
-             contaminant=True, score=False, unique_pep_threshold=2):  
+             contaminant=True, score=False, unique_pep_threshold=False):  
     before,start = df.shape,df.shape
     print('starting from:', before)
     if id_by_site:
@@ -123,13 +123,13 @@ def clean_df(df, id_by_site=True, rev_database=True,
         df = df[df[col] >= score]
         print_result(start, before, df, col)
         
-        
-    ##remove protein groups with less thatn 2 unique peptides
-    before = df.shape
-    col = 'Peptide counts (unique)'
-    df['unique_int'] = [int(n.split(';')[0]) for n in df[col]]
-    df = df[df['unique_int'] >= unique_pep_threshold]
-    print_result(start, before, df, col)
+    if unique_pep_threshold:    
+    ##remove protein groups with less than unique peptides
+        before = df.shape
+        col = 'Peptide counts (razor+unique)'
+        df['unique_int'] = [int(n.split(';')[0]) for n in df[col]]
+        df = df[df['unique_int'] >= unique_pep_threshold]
+        print_result(start, before, df, col)
     return df  
 
 

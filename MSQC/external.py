@@ -100,7 +100,7 @@ def extract_Injection_Time_Table(RAW_FILE_PATH, inrow):
     out.close()
     rawfile.Close()
 
-def plot_Injection_Time(RAW_FILE_PATH, inrow):
+def plot_Injection_Time(RAW_FILE_PATH, inrow, Inst):
     df = pd.DataFrame.from_csv(os.path.join(RAW_FILE_PATH,inrow+'.it.csv'))
     nplots = df['MSOrder'].max()
     fig,axes=plt.subplots(ncols=nplots,nrows=1,figsize=(16,6))
@@ -118,14 +118,17 @@ def plot_Injection_Time(RAW_FILE_PATH, inrow):
             label='median')
         ax.set_title('Injection Time MS{}'.format(n))
     
-    plt.suptitle(inrow,y=1.05)
+    plt.suptitle(inrow + ' '+ Inst, y=1.05)
     plt.tight_layout()
     plt.savefig(os.path.join(RAW_FILE_PATH, 'images', inrow+'.it.csv.png'))
     plt.show()    
 
 def Injection_Time_pipeline(RAW_FILE_PATH, inrow):
+    raw_file=MSFileReader.ThermoRawfile(os.path.join(RAW_FILE_PATH, inrow))
+    Inst=raw_file.GetInstModel()
+    raw_file.Close()
     extract_Injection_Time_Table(RAW_FILE_PATH, inrow)
-    plot_Injection_Time(RAW_FILE_PATH, inrow)    
+    plot_Injection_Time(RAW_FILE_PATH, inrow, Inst)    
 
 
 
