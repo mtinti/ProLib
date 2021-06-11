@@ -48,7 +48,7 @@ def split_gradient_by_charge(RAW_FILE_PATH, inraw, msmsScans, delay=0):
     count =0
     nrow = 0
     ncol = 0
-    for i in tqdm_notebook(range(0,6)):
+    for i in tqdm_notebook([2,0,1,3,4,5]):
         if count == 3:
             nrow+=1
             ncol=0
@@ -73,8 +73,8 @@ def split_gradient_by_charge(RAW_FILE_PATH, inraw, msmsScans, delay=0):
         #ax2.legend(loc='upper center', bbox_to_anchor=(0.95, -0.02))
 
         ax.set_title('charge=+{}'.format(i))
-        ax.set_ylabel('Retention Time')
-        ax.set_xlabel('Count')
+        ax.set_xlabel('Retention Time')
+        ax.set_ylabel('Count')
         count+=1
         ncol+=1
 
@@ -173,8 +173,9 @@ def get_method(raw_file_path, verbose = 0):
     else:
         Exception('no method found 1')
     for text in texts:
+        #print(text)
         #text = rawfile.GetInstMethod(i)
-        if 'Method of' in text:
+        if 'Method of' or 'Method Summary' in text:
             return text
     raise Exception('no method found 2')
 
@@ -192,6 +193,7 @@ def find_method_diff(raw_file_path_1, raw_file_path_2):
 #functions to extract gradient from raw file Methods
 #our in house Methods
 def process_1(text):
+    #print(text)
     start = 0
     for index, line in enumerate(text.split('\n')):
         if '0.000 [min] Start Run' in line:
@@ -201,6 +203,7 @@ def process_1(text):
     b_value = 0
     minutes = []
     b_values = []
+    stop_run = []
     for line in text.split('\n')[start:]:
         #print (line)
         if '[min]' in line:
@@ -211,12 +214,20 @@ def process_1(text):
             b_value = line.split(' ')[-2]
             b_values.append(b_value)
             minutes.append(minute)
-            #print(minute, b_value)
+            print(minute, b_value)
             #print('ok')
         
-    #print('minutes',minutes)
-    #print('b_values',b_values)       
+        if '[min] Stop Run' in line:
+            stop_run.append(line.split(' ')[0])
+            
+        
+    print('minutes',minutes)
+    print('b_values',b_values)       
     #print(len(minutes),len(b_values))
+    if len(stop_run) > 0 :
+        minutes.append(stop_run[0])
+        last = b_values[-1]
+        b_values.append(last)
     return (minutes,b_values)
 
 #most of the cases            
@@ -359,7 +370,7 @@ def __plot_gradient(ax, tempMSMSdf, gradient):
     ax.plot(temp.index.values,temp.values,'g-',label='Identified')
     
     temp = tempMSMSdf[ tempMSMSdf['Identified']=='-' ].groupby('RT_round')['Retention time'].size()
-    ax.plot(temp.index.values,temp.values,'r-',label='not identified')
+    ax.plot(temp.index.values, temp.values,'r-',label='not identified')
     
     #print(tempMSMSdf.groupby('RT_round')['Retention time'].size().head())
     
@@ -390,15 +401,19 @@ def __plot_gradient(ax, tempMSMSdf, gradient):
         ax2.set_ylabel('Acetonitrile %', fontsize=16)
         ax2.grid(False)
         ax2.set_yticks(np.arange(5, 100, 10))
-        ax2.legend(loc='upper center', bbox_to_anchor=(0.95, -0.02))
+        ax2.legend(loc='upper center', bbox_to_anchor=(0.95, 1.1))
+        ax2.set_xlabel('Retention time')
+    #ax.set_xticks(np.arange(0,ax.get_xlim()[1],10))
+    #ax.set_xticklabels(np.arange(0,ax.get_xlim()[1],10),visible = True)
     
     #handles, labels = ax.get_legend_handles_labels()
-
+    
         
     #new_handles = [Line2D([], [], c=h.get_edgecolor()) for h in handles]
     ax.legend(#handles=new_handles, labels=labels,
-              loc='upper center', bbox_to_anchor=(0.1, -0.02))
+              loc='upper center', bbox_to_anchor=(0.1, 1.15))
     ax.set_title('QC: Chromatography Efficency')
+    
   
 def __plot_ion_current(ax, tempMSdf, tempMSMSdf, tempMSMSMSdf):
     
@@ -445,8 +460,7 @@ def __plot_cycle_time(ax, tempMSdf):
     
 #function to connect all the subplots
 def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=(),extend=0):
-    fig,axes=plt.subplots(figsize=(16,10), ncols=2, 
-    nrows=2,  sharex=True)
+    fig,axes=plt.subplots(figsize=(16,10), ncols=2, nrows=2)
     #just to be sure
     if len(tempMSdf) > 0:
         #print('ok')
@@ -462,11 +476,20 @@ def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=(),extend
     __plot_cycle_time(axes[1,1], tempMSdf)
     for a,b in [(0,0),(0,1),(1,0),(1,1)]:
         ax = axes[a, b]
+        #ax.set_xticks(np.arange(5, ax.get_xlim()[1], 10))
+        #ax.set_xticklabels([int(n) for n in np.arange(5, ax.get_xlim()[1], 10)])
+        
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label]):
             item.set_fontsize(16)
         if extend:
             xmin,xmax=ax.get_xlim()
             ax.set_xlim(xmin,xmax+extend)
+    plt.setp([a.get_xticklabels() for a in fig.axes[:-1]], visible=True)
+    axes[0, 0].set_xlabel('Retention time',visible=True)
+     
+    #plt.setp([a.get_xlabel() for a in fig.axes[:-1]], visible=True)
+    #ax.spines['bottom'].set_visible(True)
+    
     return fig,axes 
     
 #make a safe file name
@@ -1078,6 +1101,9 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
             #print('elapsed',elapsed)
             
             def compute_median(X):
+                #res = []
+                #for n in X:
+                #    if ';' in str(n):
                 X= np.median([float(n) for n in X.split(';')])
                 return X
             
@@ -1085,7 +1111,12 @@ def qc_pipline(TXT_PATH,parse_msmsScans=True, parse_msScans=True, parse_msmsmsSc
                 temp = []
                 print('parse', col, 'error')
                 for n in tqdm_notebook(msms[col]):
-                    temp.append(compute_median(n))
+                    if ';' in str(n):
+                        temp.append(compute_median(n))
+                    else:
+                        #print(n)
+                        temp.append(np.nan)
+
                 msms.loc[:,'median_MSMS_error_'+tag]=temp 
             
             df_summary = add_msms_error(msms, df_summary)

@@ -1,0 +1,44 @@
+
+r=3.5.1
+conda create --name myEnv python=3.7.1 rpy2=2.9.1 r=3.5.1 numpy scikit-learn matplotlib simplegeneric tqdm pandas scipy seaborn missingno adjusttext biopython jupyter jupyter_contrib_nbextensions
+conda activate myEnv
+conda install numpy=1.16.3
+
+
+install.packages("BiocManager", repos='https://cran.ma.imperial.ac.uk/')
+
+
+
+install_name_tool -change \
+    /usr/lib/libc++abi.dylib \
+    /Library/Frameworks/R.framework/Resources/lib/libc++abi.1.dylib \
+    /Library/Frameworks/R.framework/Resources/lib/libc++.1.dylib
+
+BiocManager::install("sva") # install limma
+BiocManager::install("DESeq2")
+BiocManager::install("edgeR")
+
+
+
+
+install.packages("tidyverse")
+install.packages("gridExtra")
+install.packages("scales")
+install.packages("locfit")
+
+
+install.packages("sva")
+
+
+update.packages(ask=FALSE,checkBuilt=TRUE,repos="https://cloud.r-project.org")
+
+install.packages(c("tidyverse", "caret"), dependencies=TRUE,repos="https://cloud.r-project.org")
+
+
+
+
+<<<<<<< HEAD
+ 
+=======
+ 
+>>>>>>> 1034dc82643b87ce1e262ae21af00e6de966e518
