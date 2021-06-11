@@ -214,15 +214,15 @@ def process_1(text):
             b_value = line.split(' ')[-2]
             b_values.append(b_value)
             minutes.append(minute)
-            print(minute, b_value)
+            #print(minute, b_value)
             #print('ok')
         
         if '[min] Stop Run' in line:
             stop_run.append(line.split(' ')[0])
             
         
-    print('minutes',minutes)
-    print('b_values',b_values)       
+    #print('minutes',minutes)
+    #print('b_values',b_values)       
     #print(len(minutes),len(b_values))
     if len(stop_run) > 0 :
         minutes.append(stop_run[0])
@@ -458,6 +458,55 @@ def __plot_cycle_time(ax, tempMSdf):
     ax.set_ylabel('Cycle time')
     ax.set_title('QC: Instrument Operativity')
     
+   
+def __plot_missed_cleavages(ax, msmsScans):
+    #fig,ax = plt.subplots(figsize=(6,4))
+
+    msmsScans['len_seq']=msmsScans['Sequence'].str.len()
+    msmsScans['miss_c']=(msmsScans['Sequence'].str.count('K')+msmsScans['Sequence'].str.count('R'))-1
+
+
+    temp = msmsScans[((msmsScans['Charge']==2)|
+                     (msmsScans['Charge']==3)) &
+                    (msmsScans['len_seq']>=5) & (msmsScans['Identified']=='+')]
+
+    temp.plot(x='Retention time',y='len_seq',kind='scatter', alpha=0.05, ax=ax,label='Peptide')
+    ax.set_ylabel('Peptide Length')
+
+    leg = ax.legend(#handles=new_handles, labels=labels,
+              loc='upper center', bbox_to_anchor=(0.1, 1.15))
+    for lh in leg.legendHandles: 
+        lh.set_alpha(1)
+              
+              
+    ax2=ax.twinx()
+
+    temp = msmsScans[((msmsScans['Charge']==2)|
+                     (msmsScans['Charge']==3)) &
+                    (msmsScans['len_seq']>=5) & (msmsScans['Identified']=='+')]
+
+    temp = temp.groupby('RT_round')['miss_c'].value_counts()
+
+    temp = temp.to_frame()
+    temp.columns=['counts']
+    temp=temp.reset_index()
+    temp=temp[temp['miss_c']>=0]
+    X=[]
+    Y=[]
+    for item in temp.groupby('RT_round'):
+        X.append(item[0])
+        Y.append(item[1][item[1]['miss_c']>0]['counts'].sum() / item[1]['counts'].sum())
+    temp=pd.DataFrame()
+    temp['Retention time']=X
+    temp['Percentage MC']=Y
+
+    temp.plot(x='Retention time',y='Percentage MC',kind='line',ax=ax2)
+    ax2.grid(False)
+    ax2.set_title('Missed cleavages')
+    ax2.set_ylabel('MC %')
+    ax2.legend(loc='upper center', bbox_to_anchor=(0.95, 1.1))    
+    
+    
 #function to connect all the subplots
 def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=(),extend=0):
     fig,axes=plt.subplots(figsize=(16,10), ncols=2, nrows=2)
@@ -471,7 +520,8 @@ def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=(),extend
     tempMSMSdf = tempMSMSdf.sort_values('Retention time')
     
     __plot_gradient(axes[0,0],  tempMSMSdf, gradient=gradient)
-    __plot_injection_time(axes[0,1], tempMSdf, tempMSMSdf, tempMSMSMSdf)
+    #__plot_injection_time(axes[0,1], tempMSdf, tempMSMSdf, tempMSMSMSdf)
+    __plot_missed_cleavages(axes[0,1], tempMSMSdf)
     __plot_ion_current(axes[1,0], tempMSdf, tempMSMSdf, tempMSMSMSdf)
     __plot_cycle_time(axes[1,1], tempMSdf)
     for a,b in [(0,0),(0,1),(1,0),(1,1)]:
@@ -484,8 +534,10 @@ def plot_raw_file(tempMSdf, tempMSMSdf,  tempMSMSMSdf, title, gradient=(),extend
         if extend:
             xmin,xmax=ax.get_xlim()
             ax.set_xlim(xmin,xmax+extend)
-    plt.setp([a.get_xticklabels() for a in fig.axes[:-1]], visible=True)
+    plt.setp([a.get_xticklabels() for a in fig.axes], visible=True)
     axes[0, 0].set_xlabel('Retention time',visible=True)
+    axes[0, 1].set_xlabel('Retention time',visible=True)
+    
      
     #plt.setp([a.get_xlabel() for a in fig.axes[:-1]], visible=True)
     #ax.spines['bottom'].set_visible(True)
