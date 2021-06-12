@@ -504,6 +504,7 @@ def __plot_missed_cleavages(ax, msmsScans):
     ax2.grid(False)
     ax2.set_title('Missed cleavages')
     ax2.set_ylabel('MC %')
+    ax2.set_ylim(0,1)
     ax2.legend(loc='upper center', bbox_to_anchor=(0.95, 1.1))    
     
     
