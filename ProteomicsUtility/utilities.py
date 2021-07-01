@@ -140,6 +140,10 @@ def clean_df(df, id_by_site=True, rev_database=True,
 def make_desc(n, lookfor='gene_product'):
     temp_dict = {}
     n=str(n)
+    if 'gene-Tb427' in n:
+        desc = n.split(' ')[0].replace('gene-Tb427.','')
+        return desc
+    
     if 'sp|' in n:
         item_list = n.split(';')
         desc = []
@@ -164,9 +168,9 @@ def make_desc(n, lookfor='gene_product'):
 
 #rename some of maxquant output 
 #columns
-def mod_df(df, desc_from_id=False, desc_value='gene_product' ):
+def mod_df(df, desc_from_id=False, desc_value='gene_product', id_cols = 'Protein IDs' ):
     df['Gene_id'] = [clean_id(n.split(':')[0].split(';')[0])
-                     for n in df['Protein IDs']]
+                     for n in df[id_cols]]
     df['desc'] = df['Fasta headers'].apply(make_desc, lookfor=desc_value)
     return df
    
@@ -341,11 +345,11 @@ def replace_nan(col):
 #to account for uneven loading
 def norm_loading_TMT(df):
     col_sum = df.sum(axis=0)
-    print(col_sum)
+    #print(col_sum)
     target = np.mean(col_sum)
-    print(target)
+    #print(target)
     norm_facs = target / col_sum
-    print(norm_facs)
+    #print(norm_facs)
     data_norm = df.multiply(norm_facs, axis=1)
     return  data_norm
 
